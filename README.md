@@ -1,4 +1,4 @@
-# FASHN AI Virtual Try-On App
+y# AI Fashion Virtual Try On
 
 A Next.js + TypeScript application that provides virtual try-on functionality using the FASHN AI Try-On v1.6 API.
 
@@ -6,11 +6,13 @@ A Next.js + TypeScript application that provides virtual try-on functionality us
 
 - **Three-column layout**: Separate inputs for top garment, bottom garment, and model images
 - **Sequential try-on process**: 
-  1. Applies top garment to model
-  2. Applies bottom garment to the intermediate result
+  1. Applies bottom garment to model first
+  2. Applies top garment to the intermediate result
 - **Real-time image previews** for all input URLs
 - **Modern UI** with Tailwind CSS styling
 - **Error handling** and loading states
+- **Progress tracking** with percentage display
+- **Image download functionality**
 
 ## Setup Instructions
 
@@ -120,7 +122,7 @@ For production deployment:
 2. Ensure all image URLs are publicly accessible
 3. Configure proper CORS settings if needed
 
-## 🚀 Quick Deploy
+## Quick Deploy
 
 ### Deploy to Vercel (Recommended)
 
