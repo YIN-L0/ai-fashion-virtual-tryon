@@ -1,6 +1,6 @@
 # 部署指南
 
-## 部署到 Vercel (推荐)
+## 🚀 部署到 Vercel (推荐)
 
 Vercel 是 Next.js 的官方推荐部署平台，提供免费托管。
 
@@ -60,7 +60,7 @@ vercel --prod
 
 ---
 
-## 其他部署选项
+## 🌐 其他部署选项
 
 ### Netlify 部署
 
@@ -89,15 +89,15 @@ netlify deploy --dir=out --prod
 
 ---
 
-## 部署前检查清单
+## 📋 部署前检查清单
 
-- 应用在本地正常运行 (`npm run dev`)
-- 构建成功 (`npm run build`)
-- 环境变量已配置
-- `.gitignore` 已设置
-- 依赖包已正确安装
+- ✅ 应用在本地正常运行 (`npm run dev`)
+- ✅ 构建成功 (`npm run build`)
+- ✅ 环境变量已配置
+- ✅ `.gitignore` 已设置
+- ✅ 依赖包已正确安装
 
-## 常见问题
+## 🔧 常见问题
 
 **Q: 部署后 API 调用失败？**
 A: 检查环境变量是否正确设置，特别是 `FASHN_API_KEY`。
@@ -108,7 +108,7 @@ A: 运行 `npm run build` 检查本地构建是否成功。
 **Q: 图片无法显示？**
 A: 确保图片 URL 是公开可访问的，且支持 CORS。
 
-## 性能优化建议
+## 🎯 性能优化建议
 
 - 启用 Vercel 的 Edge Functions
 - 配置适当的缓存策略
