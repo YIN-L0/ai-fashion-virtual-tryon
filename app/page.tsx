@@ -15,19 +15,16 @@ export default function Home() {
   const [modelUrl, setModelUrl] = useState('');
   const [finalResultUrl, setFinalResultUrl] = useState('');
   const [finalResultUrls, setFinalResultUrls] = useState<string[]>([]);
-  const [intermediateResults, setIntermediateResults] = useState<string[]>([]);
-  const [selectedIntermediateUrl, setSelectedIntermediateUrl] = useState('');
-  const [showIntermediateSelection, setShowIntermediateSelection] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState('');
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingText, setLoadingText] = useState('');
   const [error, setError] = useState('');
 
   const callTryOnAPI = async (
     modelImage: string, 
     garmentImage: string, 
-    numSamples: number = 1,
     retryCount = 0
-  ): Promise<string[]> => {
+  ): Promise<string> => {
     try {
       const response = await fetch('/api/tryon', {
         method: 'POST',
@@ -37,7 +34,7 @@ export default function Home() {
         body: JSON.stringify({
           model_image: modelImage,
           garment_image: garmentImage,
-          num_samples: numSamples,
+          num_samples: 1,
         }),
       });
 
@@ -52,17 +49,18 @@ export default function Home() {
         throw new Error('No output received from API');
       }
 
-      return data.output;
+      return data.output[0];
     } catch (error) {
       if (retryCount < 1 && error instanceof Error && 
           error.message.includes('Failed to load garment image')) {
         console.log('Retrying API call after image load error...');
         await new Promise(resolve => setTimeout(resolve, 5000));
-        return callTryOnAPI(modelImage, garmentImage, numSamples, retryCount + 1);
+        return callTryOnAPI(modelImage, garmentImage, retryCount + 1);
       }
       throw error;
     }
   };
+
 
   const handleGenerate = async () => {
     if (!modelUrl) {
@@ -79,68 +77,66 @@ export default function Home() {
     setError('');
     setFinalResultUrl('');
     setFinalResultUrls([]);
-    setIntermediateResults([]);
-    setShowIntermediateSelection(false);
-    setSelectedIntermediateUrl('');
+    setLoadingProgress(0);
+    setLoadingText('');
 
     try {
       if (topGarmentUrl && bottomGarmentUrl) {
-        setCurrentStep('第一步：正在生成3张上装效果图...');
-        const intermediateUrls = await callTryOnAPI(modelUrl, topGarmentUrl, 3);
+        // 两步流程：先换上装，再换下装
+        // 第一步：模特 + 上装
+        setLoadingProgress(30);
+        setLoadingText('加载生成中.......30%');
+        const intermediateUrl = await callTryOnAPI(modelUrl, topGarmentUrl);
         
-        setIntermediateResults(intermediateUrls);
-        setShowIntermediateSelection(true);
-        setCurrentStep('请选择你喜欢的上装效果图，然后点击"选择并继续生成下装"');
+        // 等待一下确保图片可访问
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // 第二步：中间结果 + 下装
+        setLoadingProgress(60);
+        setLoadingText('加载生成中.......60%');
+        const finalUrl = await callTryOnAPI(intermediateUrl, bottomGarmentUrl);
+        
+        // 最后渲染阶段
+        setLoadingProgress(90);
+        setLoadingText('加速渲染中.......90%');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        setLoadingProgress(100);
+        setFinalResultUrl(finalUrl);
       } else if (topGarmentUrl) {
-        setCurrentStep('正在生成3张上装效果图...');
-        const finalUrls = await callTryOnAPI(modelUrl, topGarmentUrl, 3);
+        // 只换上装
+        setLoadingProgress(30);
+        setLoadingText('加载生成中.......30%');
+        const finalUrl = await callTryOnAPI(modelUrl, topGarmentUrl);
         
-        setFinalResultUrls(finalUrls);
-        setFinalResultUrl(finalUrls[0]);
-        setCurrentStep('完成！已生成3张上装效果图');
+        setLoadingProgress(90);
+        setLoadingText('加速渲染中.......90%');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        setLoadingProgress(100);
+        setFinalResultUrl(finalUrl);
       } else if (bottomGarmentUrl) {
-        setCurrentStep('正在生成3张下装效果图...');
-        const finalUrls = await callTryOnAPI(modelUrl, bottomGarmentUrl, 3);
+        // 只换下装
+        setLoadingProgress(30);
+        setLoadingText('加载生成中.......30%');
+        const finalUrl = await callTryOnAPI(modelUrl, bottomGarmentUrl);
         
-        setFinalResultUrls(finalUrls);
-        setFinalResultUrl(finalUrls[0]);
-        setCurrentStep('完成！已生成3张下装效果图');
+        setLoadingProgress(90);
+        setLoadingText('加速渲染中.......90%');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        setLoadingProgress(100);
+        setFinalResultUrl(finalUrl);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
-      setCurrentStep('');
     } finally {
       setIsLoading(false);
+      setLoadingProgress(0);
+      setLoadingText('');
     }
   };
 
-  const handleContinueWithSelection = async () => {
-    if (!selectedIntermediateUrl) {
-      setError('请先选择一张上装效果图');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-    setShowIntermediateSelection(false);
-
-    try {
-      setCurrentStep('等待选择的图片加载完成...');
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      setCurrentStep('第二步：正在生成3张最终效果图...');
-      const finalUrls = await callTryOnAPI(selectedIntermediateUrl, bottomGarmentUrl, 3);
-      
-      setFinalResultUrls(finalUrls);
-      setFinalResultUrl(finalUrls[0]);
-      setCurrentStep('完成！已生成3张最终效果图');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Generation failed');
-      setCurrentStep('');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const isValidUrl = (url: string) => {
     try {
@@ -153,8 +149,6 @@ export default function Home() {
 
   const downloadImage = async (imageUrl: string) => {
     try {
-      setCurrentStep('正在准备下载...');
-      
       const response = await fetch(imageUrl);
       if (!response.ok) {
         throw new Error('Failed to fetch image');
@@ -172,9 +166,6 @@ export default function Home() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
-      setCurrentStep('下载完成！');
-      setTimeout(() => setCurrentStep(''), 2000);
     } catch (error) {
       console.error('Download failed:', error);
       setError('下载失败，请重试或右键保存图片');
@@ -446,51 +437,53 @@ export default function Home() {
                   onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
                 />
 
-                {modelUrl && isValidUrl(modelUrl) ? (
-                  <div style={{
-                    flex: 1,
-                    border: '2px solid var(--color-border)',
-                    borderRadius: 'var(--radius-lg)',
-                    overflow: 'hidden',
-                    background: 'transparent',
-                    marginBottom: 'var(--spacing-md)'
-                  }}>
-                    <img
-                      src={modelUrl}
-                      alt="Model preview"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        objectPosition: 'center',
-                        display: 'block'
-                      }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '2px solid var(--color-border)',
-                    borderRadius: 'var(--radius-lg)',
-                    background: 'transparent',
-                    marginBottom: 'var(--spacing-md)'
-                  }}>
-                    <div style={{ textAlign: 'center', color: 'var(--color-text-tertiary)' }}>
-                      <div style={{ fontSize: '3rem', marginBottom: 'var(--spacing-sm)', opacity: 0.6 }}>
-                        👤
-                      </div>
-                      <p style={{ fontSize: '1rem', marginBottom: 'var(--spacing-xs)' }}>
-                        输入模特图片URL
-                      </p>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {modelUrl && isValidUrl(modelUrl) ? (
+                    <div style={{
+                      flex: 1,
+                      border: '2px solid var(--color-border)',
+                      borderRadius: 'var(--radius-lg)',
+                      overflow: 'hidden',
+                      background: 'transparent',
+                      marginBottom: 'var(--spacing-md)'
+                    }}>
+                      <img
+                        src={modelUrl}
+                        alt="Model preview"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          objectPosition: 'center',
+                          display: 'block'
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid var(--color-border)',
+                      borderRadius: 'var(--radius-lg)',
+                      background: 'transparent',
+                      marginBottom: 'var(--spacing-md)'
+                    }}>
+                      <div style={{ textAlign: 'center', color: 'var(--color-text-tertiary)' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: 'var(--spacing-sm)', opacity: 0.6 }}>
+                          👤
+                        </div>
+                        <p style={{ fontSize: '1rem', margin: 0 }}>
+                          输入模特图片URL
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <button
                   onClick={handleGenerate}
@@ -534,32 +527,9 @@ export default function Home() {
                   }}
                 >
                   <span style={{ fontSize: '1.2rem' }}>✨</span>
-                  {isLoading ? '生成中...' : '开始生成'}
+                  {isLoading ? loadingText : '开始生成'}
                 </button>
 
-                {isLoading && currentStep && (
-                  <div style={{
-                    marginTop: 'var(--spacing-md)',
-                    padding: 'var(--spacing-md)',
-                    background: 'var(--color-border-light)',
-                    borderRadius: 'var(--radius-md)',
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--spacing-sm)' }}>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        border: '2px solid var(--color-border)',
-                        borderTop: '2px solid var(--color-primary)',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                      }}></div>
-                      <p style={{ color: 'var(--color-text-primary)', fontSize: '0.9rem', margin: 0 }}>
-                        {currentStep}
-                      </p>
-                    </div>
-                  </div>
-                )}
 
                 {error && (
                   <div style={{
@@ -605,245 +575,84 @@ export default function Home() {
               </div>
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                {/* Intermediate Selection */}
-                {showIntermediateSelection && intermediateResults.length > 0 && (
-                  <div style={{ height: '100%', overflow: 'auto' }}>
-                    <h3 style={{
-                      fontSize: '1.1rem',
-                      fontWeight: 500,
-                      color: 'var(--color-text-primary)',
-                      marginBottom: 'var(--spacing-md)',
-                      textAlign: 'center'
+                {/* Final Results */}
+                {finalResultUrl && (
+                  <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{
+                      flex: 1,
+                      border: '2px solid var(--color-border)',
+                      borderRadius: 'var(--radius-lg)',
+                      overflow: 'hidden',
+                      background: 'transparent',
+                      marginBottom: 'var(--spacing-md)'
                     }}>
-                      请选择喜欢的上装效果图：
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-                      {intermediateResults.map((url, index) => (
-                        <div 
-                          key={index}
-                          style={{
-                            border: selectedIntermediateUrl === url 
-                              ? '2px solid var(--color-primary)' 
-                              : '2px solid var(--color-border)',
-                            borderRadius: 'var(--radius-md)',
-                            padding: 'var(--spacing-sm)',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                            background: selectedIntermediateUrl === url 
-                              ? 'var(--color-border-light)' 
-                              : 'transparent'
-                          }}
-                          onClick={() => setSelectedIntermediateUrl(url)}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)' }}>
-                            <input
-                              type="radio"
-                              name="intermediate-selection"
-                              value={url}
-                              checked={selectedIntermediateUrl === url}
-                              onChange={() => setSelectedIntermediateUrl(url)}
-                              style={{ accentColor: 'var(--color-primary)' }}
-                            />
-                            <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>选项 {index + 1}</span>
-                          </div>
-                          
-                          <div style={{ height: '120px', marginBottom: 'var(--spacing-sm)' }}>
-                            <img
-                              src={url}
-                              alt={`上装效果图 ${index + 1}`}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'contain',
-                                borderRadius: 'var(--radius-sm)'
-                              }}
-                            />
-                          </div>
-                          
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(url);
-                              }}
-                              style={{
-                                fontSize: '0.8rem',
-                                background: 'var(--color-text-secondary)',
-                                color: 'white',
-                                padding: '4px 8px',
-                                borderRadius: 'var(--radius-sm)',
-                                border: 'none',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              📋 复制
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                downloadImage(url);
-                              }}
-                              style={{
-                                fontSize: '0.8rem',
-                                background: 'var(--color-primary)',
-                                color: 'white',
-                                padding: '4px 8px',
-                                borderRadius: 'var(--radius-sm)',
-                                border: 'none',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              📥 下载
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                      <img
+                        src={finalResultUrl}
+                        alt="Virtual try-on result"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          objectPosition: 'center'
+                        }}
+                      />
                     </div>
                     
-                    <button
-                      onClick={handleContinueWithSelection}
-                      disabled={!selectedIntermediateUrl || isLoading}
-                      style={{
-                        width: '100%',
-                        marginTop: 'var(--spacing-md)',
-                        background: !selectedIntermediateUrl || isLoading
-                          ? 'var(--color-border)'
-                          : 'var(--color-primary)',
-                        color: !selectedIntermediateUrl || isLoading
-                          ? 'var(--color-text-secondary)'
-                          : 'white',
-                        padding: 'var(--spacing-md) var(--spacing-lg)',
-                        borderRadius: 'var(--radius-md)',
-                        border: 'none',
-                        fontSize: '1rem',
-                        fontWeight: 500,
-                        cursor: !selectedIntermediateUrl || isLoading ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.3s ease'
-                      }}
-                    >
-                      选择并继续生成下装
-                    </button>
-                  </div>
-                )}
-
-                {/* Final Results */}
-                {(finalResultUrl || finalResultUrls.length > 0) && !showIntermediateSelection && (
-                  <div style={{ height: '100%', overflow: 'auto' }}>
-                    {finalResultUrls.length > 1 ? (
-                      <div>
-                        <h3 style={{
-                          fontSize: '1.1rem',
-                          fontWeight: 500,
-                          color: 'var(--color-text-primary)',
-                          marginBottom: 'var(--spacing-md)',
-                          textAlign: 'center'
-                        }}>
-                          生成了 {finalResultUrls.length} 张效果图：
-                        </h3>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-                          {finalResultUrls.map((url, index) => (
-                            <div key={index} style={{
-                              border: '2px solid var(--color-border)',
-                              borderRadius: 'var(--radius-md)',
-                              padding: 'var(--spacing-sm)'
-                            }}>
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 'var(--spacing-sm)'
-                              }}>
-                                <span style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>
-                                  效果图 {index + 1}
-                                </span>
-                                <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
-                                  <button
-                                    onClick={() => navigator.clipboard.writeText(url)}
-                                    style={{
-                                      fontSize: '0.8rem',
-                                      background: 'var(--color-text-secondary)',
-                                      color: 'white',
-                                      padding: '4px 8px',
-                                      borderRadius: 'var(--radius-sm)',
-                                      border: 'none',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    📋
-                                  </button>
-                                  <button
-                                    onClick={() => window.open(url, '_blank')}
-                                    style={{
-                                      fontSize: '0.8rem',
-                                      background: 'var(--color-accent)',
-                                      color: 'white',
-                                      padding: '4px 8px',
-                                      borderRadius: 'var(--radius-sm)',
-                                      border: 'none',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    🔍
-                                  </button>
-                                  <button
-                                    onClick={() => downloadImage(url)}
-                                    style={{
-                                      fontSize: '0.8rem',
-                                      background: 'var(--color-primary)',
-                                      color: 'white',
-                                      padding: '4px 8px',
-                                      borderRadius: 'var(--radius-sm)',
-                                      border: 'none',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    📥
-                                  </button>
-                                </div>
-                              </div>
-                              
-                              <img
-                                src={url}
-                                alt={`效果图 ${index + 1}`}
-                                style={{
-                                  width: '100%',
-                                  height: '150px',
-                                  objectFit: 'contain',
-                                  borderRadius: 'var(--radius-sm)',
-                                  background: 'var(--color-border-light)'
-                                }}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{
-                        flex: 1,
-                        border: '2px solid var(--color-border)',
-                        borderRadius: 'var(--radius-lg)',
-                        overflow: 'hidden',
-                        background: 'transparent'
-                      }}>
-                        <img
-                          src={finalResultUrl}
-                          alt="Final try-on result"
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            objectPosition: 'center'
-                          }}
-                        />
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(finalResultUrl)}
+                        style={{
+                          flex: 1,
+                          background: 'var(--color-text-secondary)',
+                          color: 'white',
+                          padding: 'var(--spacing-sm)',
+                          borderRadius: 'var(--radius-md)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.9rem',
+                          fontWeight: 500
+                        }}
+                      >
+                        📋 复制链接
+                      </button>
+                      <button
+                        onClick={() => window.open(finalResultUrl, '_blank')}
+                        style={{
+                          flex: 1,
+                          background: 'var(--color-accent)',
+                          color: 'white',
+                          padding: 'var(--spacing-sm)',
+                          borderRadius: 'var(--radius-md)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.9rem',
+                          fontWeight: 500
+                        }}
+                      >
+                        🔍 查看大图
+                      </button>
+                      <button
+                        onClick={() => downloadImage(finalResultUrl)}
+                        style={{
+                          flex: 1,
+                          background: 'var(--color-primary)',
+                          color: 'white',
+                          padding: 'var(--spacing-sm)',
+                          borderRadius: 'var(--radius-md)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.9rem',
+                          fontWeight: 500
+                        }}
+                      >
+                        📥 下载
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 {/* Empty State */}
-                {!showIntermediateSelection && !finalResultUrl && finalResultUrls.length === 0 && (
+                {!finalResultUrl && (
                   <div style={{
                     flex: 1,
                     display: 'flex',
