@@ -331,7 +331,7 @@ export default function Home() {
                         style={{
                           width: '100%',
                           height: '100%',
-                          objectFit: 'contain',
+                          objectFit: 'cover',
                           objectPosition: 'top',
                           display: 'block'
                         }}
@@ -387,7 +387,7 @@ export default function Home() {
                         style={{
                           width: '100%',
                           height: '100%',
-                          objectFit: 'contain',
+                          objectFit: 'cover',
                           objectPosition: 'top',
                           display: 'block'
                         }}
@@ -474,7 +474,7 @@ export default function Home() {
                         style={{
                           width: '100%',
                           height: '100%',
-                          objectFit: 'contain',
+                          objectFit: 'cover',
                           objectPosition: 'top',
                           display: 'block'
                         }}
@@ -613,7 +613,7 @@ export default function Home() {
                         style={{
                           width: '100%',
                           height: '100%',
-                          objectFit: 'contain',
+                          objectFit: 'cover',
                           objectPosition: 'top'
                         }}
                       />
