@@ -22,9 +22,14 @@ async function validateImageUrl(url: string, maxRetries = 3): Promise<boolean> {
 
 export async function POST(request: NextRequest) {
   try {
-    const { model_image, garment_image, num_samples = 1 } = await request.json();
+    console.log('API route called');
+    const body = await request.json();
+    console.log('Request body:', body);
+    
+    const { model_image, garment_image, num_samples = 1 } = body;
 
     if (!model_image || !garment_image) {
+      console.log('Missing required fields');
       return NextResponse.json(
         { error: 'Both model_image and garment_image are required' },
         { status: 400 }
@@ -32,6 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = process.env.FASHN_API_KEY;
+    console.log('API key configured:', !!apiKey);
     if (!apiKey) {
       return NextResponse.json(
         { error: 'FASHN API key not configured' },

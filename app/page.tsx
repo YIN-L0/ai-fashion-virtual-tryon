@@ -26,6 +26,8 @@ export default function Home() {
     retryCount = 0
   ): Promise<string> => {
     try {
+      console.log('Calling API with:', { modelImage, garmentImage });
+      
       const response = await fetch('/api/tryon', {
         method: 'POST',
         headers: {
@@ -38,12 +40,31 @@ export default function Home() {
         }),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers.get('content-type'));
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'API call failed');
+        const responseText = await response.text();
+        console.log('Error response:', responseText);
+        
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || 'API call failed');
+        } catch (parseError) {
+          throw new Error(`API call failed: ${response.status} - ${responseText.substring(0, 200)}`);
+        }
       }
 
-      const data: TryOnResponse = await response.json();
+      const responseText = await response.text();
+      console.log('Success response:', responseText);
+      
+      let data: TryOnResponse;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', responseText);
+        throw new Error('Invalid JSON response from server');
+      }
       
       if (!data.success || !data.output || data.output.length === 0) {
         throw new Error('No output received from API');
