@@ -22,7 +22,7 @@ async function validateImageUrl(url: string, maxRetries = 3): Promise<boolean> {
 
 export async function POST(request: NextRequest) {
   try {
-    const { model_image, garment_image } = await request.json();
+    const { model_image, garment_image, num_samples = 1 } = await request.json();
 
     if (!model_image || !garment_image) {
       return NextResponse.json(
@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
         inputs: {
           model_image,
           garment_image
-        }
+        },
+        num_samples: num_samples
       }),
     });
 
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          output: statusResult.output,
+          output: statusResult.output, // This will now be an array of URLs
           prediction_id: predictionId
         });
       }
