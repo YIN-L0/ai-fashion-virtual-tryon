@@ -332,7 +332,7 @@ export default function Home() {
                           width: '100%',
                           height: '100%',
                           objectFit: 'contain',
-                          objectPosition: 'center',
+                          objectPosition: 'top',
                           display: 'block'
                         }}
                         onError={(e) => {
@@ -388,7 +388,7 @@ export default function Home() {
                           width: '100%',
                           height: '100%',
                           objectFit: 'contain',
-                          objectPosition: 'center',
+                          objectPosition: 'top',
                           display: 'block'
                         }}
                         onError={(e) => {
@@ -475,7 +475,7 @@ export default function Home() {
                           width: '100%',
                           height: '100%',
                           objectFit: 'contain',
-                          objectPosition: 'center',
+                          objectPosition: 'top',
                           display: 'block'
                         }}
                         onError={(e) => {
@@ -614,7 +614,7 @@ export default function Home() {
                           width: '100%',
                           height: '100%',
                           objectFit: 'contain',
-                          objectPosition: 'center'
+                          objectPosition: 'top'
                         }}
                       />
                     </div>
