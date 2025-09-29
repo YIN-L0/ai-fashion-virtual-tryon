@@ -1,3 +1,4 @@
+
 y# FASHN AI Virtual Try-On App
 
 A Next.js + TypeScript application that provides virtual try-on functionality using the FASHN AI Try-On v1.6 API.
@@ -5,10 +6,16 @@ A Next.js + TypeScript application that provides virtual try-on functionality us
 ## Features
 
 - **Three-column layout**: Separate inputs for top garment, bottom garment, and model images
+- **File Upload Support**: 
+  - Local file upload via drag-and-drop or click to browse
+  - Automatic upload to Vercel Blob storage
+  - Generates public URLs for API consumption
+  - Support for JPG, PNG, WebP formats (max 10MB)
 - **Sequential try-on process**: 
   1. Applies top garment to model
   2. Applies bottom garment to the intermediate result
-- **Real-time image previews** for all input URLs
+- **Real-time image previews** for all input URLs and uploaded files
+- **Upload progress indicators** with visual feedback
 - **Modern UI** with Tailwind CSS styling
 - **Error handling** and loading states
 
@@ -28,13 +35,19 @@ Create a `.env.local` file in the root directory:
 cp .env.example .env.local
 ```
 
-Edit `.env.local` and add your FASHN AI API key:
+Edit `.env.local` and add your API keys:
 
 ```
 FASHN_API_KEY=your_actual_api_key_here
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
 ```
 
-You can get your API key from the [FASHN AI Dashboard](https://docs.fashn.ai/api-reference/tryon-v1-6).
+**Getting your API keys:**
+- **FASHN API Key**: Get it from the [FASHN AI Dashboard](https://docs.fashn.ai/api-reference/tryon-v1-6)
+- **Vercel Blob Token**: 
+  1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+  2. Select your project → Storage → Create Database → Blob
+  3. Copy the `BLOB_READ_WRITE_TOKEN` from the connection string
 
 ### 3. Run the Development Server
 
@@ -46,17 +59,27 @@ Open [http://localhost:3456](http://localhost:3456) in your browser.
 
 ## Usage
 
-1. **Input URLs**: Enter public URLs for:
+### Option 1: Upload Local Files
+1. **Upload Images**: Drag and drop or click to browse for:
+   - Top garment image (left column)
+   - Bottom garment image (left column)  
+   - Model image (middle column)
+2. **Automatic Processing**: Files are automatically uploaded to Vercel Blob and URLs are generated
+3. **Progress Tracking**: Watch upload progress with visual indicators
+
+### Option 2: Use Image URLs
+1. **Input URLs**: Enter public URLs directly in the text fields for:
    - Top garment image (left column)
    - Bottom garment image (left column)  
    - Model image (middle column)
 
-2. **Generate**: Click "开始生成" to start the sequential try-on process
-
-3. **View Results**: The final result will appear in the right column with:
+### Generate Results
+1. **Generate**: Click "开始生成" to start the sequential try-on process
+2. **View Results**: The final result will appear in the right column with:
    - The generated image URL (copyable)
    - Image preview
    - Option to view in new window
+   - Download button
 
 ## API Reference
 
@@ -87,10 +110,12 @@ This app uses the [FASHN AI Try-On v1.6 API](https://docs.fashn.ai/api-reference
 ```
 fashn_tryon4/
 ├── app/
-│   ├── api/tryon/route.ts     # FASHN AI integration
+│   ├── api/
+│   │   ├── tryon/route.ts     # FASHN AI integration
+│   │   └── upload/route.ts    # File upload to Vercel Blob
 │   ├── globals.css            # Global styles
 │   ├── layout.tsx             # Root layout
-│   └── page.tsx               # Main try-on interface
+│   └── page.tsx               # Main try-on interface with upload
 ├── package.json               # Dependencies
 ├── tsconfig.json              # TypeScript config
 ├── tailwind.config.ts         # Tailwind config
@@ -102,6 +127,7 @@ fashn_tryon4/
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `FASHN_API_KEY` | Your FASHN AI API key | Yes |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob storage token | Yes (for file uploads) |
 
 ## Error Handling
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface TryOnResponse {
   success: boolean;
@@ -8,6 +8,161 @@ interface TryOnResponse {
   error?: string;
   prediction_id?: string;
 }
+
+// File upload area component
+const FileUploadArea = ({ 
+  type, 
+  url, 
+  setUrl, 
+  label, 
+  fileRef,
+  onFileSelect,
+  onDrop,
+  uploadingFiles,
+  uploadProgress,
+  isValidUrl
+}: { 
+  type: 'model' | 'topGarment' | 'bottomGarment';
+  url: string;
+  setUrl: (url: string) => void;
+  label: string;
+  fileRef: React.RefObject<HTMLInputElement>;
+  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>, type: 'model' | 'topGarment' | 'bottomGarment') => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>, type: 'model' | 'topGarment' | 'bottomGarment') => void;
+  uploadingFiles: {[key: string]: boolean};
+  uploadProgress: {[key: string]: number};
+  isValidUrl: (url: string) => boolean;
+}) => {
+  const isUploading = uploadingFiles[type];
+  const progress = uploadProgress[type] || 0;
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <label style={{
+        display: 'block',
+        fontSize: '0.9rem',
+        fontWeight: 500,
+        color: 'var(--color-text-primary)',
+        marginBottom: 'var(--spacing-sm)',
+        letterSpacing: '0.05em'
+      }}>
+        {label}
+      </label>
+
+      {/* URL Input */}
+      <input
+        type="url"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="或输入图片URL"
+        style={{
+          width: '100%',
+          padding: 'var(--spacing-sm) var(--spacing-md)',
+          border: '2px solid var(--color-border)',
+          borderRadius: 'var(--radius-md)',
+          fontSize: '0.9rem',
+          fontFamily: 'Inter, sans-serif',
+          transition: 'all 0.3s ease',
+          marginBottom: 'var(--spacing-sm)'
+        }}
+        onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
+        onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
+      />
+
+      {/* Upload Area */}
+      <div
+        style={{
+          flex: 1,
+          border: '2px dashed var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 'var(--spacing-md)',
+          textAlign: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          background: isUploading ? 'var(--color-surface)' : 'transparent',
+          position: 'relative'
+        }}
+        onClick={() => fileRef.current?.click()}
+        onDrop={(e) => onDrop(e, type)}
+        onDragOver={handleDragOver}
+        onMouseEnter={(e) => {
+          if (!isUploading) {
+            e.currentTarget.style.borderColor = 'var(--color-primary)';
+            e.currentTarget.style.background = 'var(--color-surface)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isUploading) {
+            e.currentTarget.style.borderColor = 'var(--color-border)';
+            e.currentTarget.style.background = 'transparent';
+          }
+        }}
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => onFileSelect(e, type)}
+        />
+
+        {isUploading ? (
+          <div>
+            <div style={{ fontSize: '2rem', marginBottom: 'var(--spacing-sm)' }}>⏳</div>
+            <div style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-sm)' }}>
+              上传中... {progress}%
+            </div>
+            <div style={{ 
+              width: '100%', 
+              height: '4px', 
+              background: 'var(--color-border)',
+              borderRadius: '2px',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: `${progress}%`,
+                height: '100%',
+                background: 'var(--color-primary)',
+                transition: 'width 0.3s ease'
+              }}></div>
+            </div>
+          </div>
+        ) : url && isValidUrl(url) ? (
+          <img
+            src={url}
+            alt={`${type} preview`}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'top',
+              borderRadius: 'var(--radius-md)'
+            }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <div>
+            <div style={{ fontSize: '3rem', marginBottom: 'var(--spacing-sm)', opacity: 0.6 }}>
+              📁
+            </div>
+            <div style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-xs)' }}>
+              点击上传或拖拽图片到此处
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
+              支持 JPG, PNG, WebP 格式，最大10MB
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function Home() {
   const [topGarmentUrl, setTopGarmentUrl] = useState('');
@@ -19,6 +174,13 @@ export default function Home() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingText, setLoadingText] = useState('');
   const [error, setError] = useState('');
+  
+  // File upload states
+  const [uploadingFiles, setUploadingFiles] = useState<{[key: string]: boolean}>({});
+  const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
+  const topGarmentFileRef = useRef<HTMLInputElement>(null);
+  const bottomGarmentFileRef = useRef<HTMLInputElement>(null);
+  const modelFileRef = useRef<HTMLInputElement>(null);
 
   const callTryOnAPI = async (
     modelImage: string, 
@@ -82,6 +244,97 @@ export default function Home() {
     }
   };
 
+  // File upload handler
+  const uploadFile = async (file: File, type: 'model' | 'topGarment' | 'bottomGarment'): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setUploadingFiles(prev => ({ ...prev, [type]: true }));
+    setUploadProgress(prev => ({ ...prev, [type]: 0 }));
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '上传失败');
+      }
+
+      const data = await response.json();
+      setUploadProgress(prev => ({ ...prev, [type]: 100 }));
+      
+      // Clear upload states after a short delay
+      setTimeout(() => {
+        setUploadingFiles(prev => ({ ...prev, [type]: false }));
+        setUploadProgress(prev => ({ ...prev, [type]: 0 }));
+      }, 1000);
+
+      return data.url;
+    } catch (error) {
+      setUploadingFiles(prev => ({ ...prev, [type]: false }));
+      setUploadProgress(prev => ({ ...prev, [type]: 0 }));
+      throw error;
+    }
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>, type: 'model' | 'topGarment' | 'bottomGarment') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const url = await uploadFile(file, type);
+      
+      switch (type) {
+        case 'model':
+          setModelUrl(url);
+          break;
+        case 'topGarment':
+          setTopGarmentUrl(url);
+          break;
+        case 'bottomGarment':
+          setBottomGarmentUrl(url);
+          break;
+      }
+      
+      setError('');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '上传失败');
+    }
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>, type: 'model' | 'topGarment' | 'bottomGarment') => {
+    event.preventDefault();
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
+        try {
+          const url = await uploadFile(file, type);
+          
+          switch (type) {
+            case 'model':
+              setModelUrl(url);
+              break;
+            case 'topGarment':
+              setTopGarmentUrl(url);
+              break;
+            case 'bottomGarment':
+              setBottomGarmentUrl(url);
+              break;
+          }
+          
+          setError('');
+        } catch (error) {
+          setError(error instanceof Error ? error.message : '上传失败');
+        }
+      } else {
+        setError('请上传图片文件');
+      }
+    }
+  };
 
   const handleGenerate = async () => {
     if (!modelUrl) {
@@ -157,7 +410,6 @@ export default function Home() {
       setLoadingText('');
     }
   };
-
 
   const isValidUrl = (url: string) => {
     try {
@@ -282,122 +534,38 @@ export default function Home() {
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase'
                 }}>
-                  Upload garment images
+                  Upload or input URLs
                 </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)', flex: 1 }}>
                 {/* Top Garment */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                    color: 'var(--color-text-primary)',
-                    marginBottom: 'var(--spacing-sm)',
-                    letterSpacing: '0.05em'
-                  }}>
-                    上装图片 URL（可选）
-                  </label>
-                  <input
-                    type="url"
-                    value={topGarmentUrl}
-                    onChange={(e) => setTopGarmentUrl(e.target.value)}
-                    placeholder="https://example.com/top-garment.jpg"
-                    style={{
-                      width: '100%',
-                      padding: 'var(--spacing-sm) var(--spacing-md)',
-                      border: '2px solid var(--color-border)',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '0.9rem',
-                      fontFamily: 'Inter, sans-serif',
-                      transition: 'all 0.3s ease',
-                      marginBottom: 'var(--spacing-sm)'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                    onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
-                  />
-                  {topGarmentUrl && isValidUrl(topGarmentUrl) && (
-                    <div style={{
-                      flex: 1,
-                      border: '2px solid var(--color-border)',
-                      borderRadius: 'var(--radius-lg)',
-                      overflow: 'hidden',
-                      background: 'transparent'
-                    }}>
-                      <img
-                        src={topGarmentUrl}
-                        alt="Top garment preview"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          objectPosition: 'top',
-                          display: 'block'
-                        }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
+                <FileUploadArea
+                  type="topGarment"
+                  url={topGarmentUrl}
+                  setUrl={setTopGarmentUrl}
+                  label="上装图片（可选）"
+                  fileRef={topGarmentFileRef}
+                  onFileSelect={handleFileSelect}
+                  onDrop={handleDrop}
+                  uploadingFiles={uploadingFiles}
+                  uploadProgress={uploadProgress}
+                  isValidUrl={isValidUrl}
+                />
 
                 {/* Bottom Garment */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                    color: 'var(--color-text-primary)',
-                    marginBottom: 'var(--spacing-sm)',
-                    letterSpacing: '0.05em'
-                  }}>
-                    下装图片 URL（可选）
-                  </label>
-                  <input
-                    type="url"
-                    value={bottomGarmentUrl}
-                    onChange={(e) => setBottomGarmentUrl(e.target.value)}
-                    placeholder="https://example.com/bottom-garment.jpg"
-                    style={{
-                      width: '100%',
-                      padding: 'var(--spacing-sm) var(--spacing-md)',
-                      border: '2px solid var(--color-border)',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '0.9rem',
-                      fontFamily: 'Inter, sans-serif',
-                      transition: 'all 0.3s ease',
-                      marginBottom: 'var(--spacing-sm)'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                    onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
-                  />
-                  {bottomGarmentUrl && isValidUrl(bottomGarmentUrl) && (
-                    <div style={{
-                      flex: 1,
-                      border: '2px solid var(--color-border)',
-                      borderRadius: 'var(--radius-lg)',
-                      overflow: 'hidden',
-                      background: 'transparent'
-                    }}>
-                      <img
-                        src={bottomGarmentUrl}
-                        alt="Bottom garment preview"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          objectPosition: 'top',
-                          display: 'block'
-                        }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
+                <FileUploadArea
+                  type="bottomGarment"
+                  url={bottomGarmentUrl}
+                  setUrl={setBottomGarmentUrl}
+                  label="下装图片（可选）"
+                  fileRef={bottomGarmentFileRef}
+                  onFileSelect={handleFileSelect}
+                  onDrop={handleDrop}
+                  uploadingFiles={uploadingFiles}
+                  uploadProgress={uploadProgress}
+                  isValidUrl={isValidUrl}
+                />
               </div>
             </div>
 
@@ -424,148 +592,83 @@ export default function Home() {
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase'
                 }}>
-                  Upload model image
+                  Upload or input URL
                 </div>
               </div>
 
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                  color: 'var(--color-text-primary)',
-                  marginBottom: 'var(--spacing-sm)',
-                  letterSpacing: '0.05em'
-                }}>
-                  模特图片 URL（必填）
-                </label>
-                <input
-                  type="url"
-                  value={modelUrl}
-                  onChange={(e) => setModelUrl(e.target.value)}
-                  placeholder="https://example.com/model.jpg"
-                  style={{
-                    width: '100%',
-                    padding: 'var(--spacing-sm) var(--spacing-md)',
-                    border: '2px solid var(--color-border)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '0.9rem',
-                    fontFamily: 'Inter, sans-serif',
-                    transition: 'all 0.3s ease',
-                    marginBottom: 'var(--spacing-md)'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginBottom: 'var(--spacing-md)' }}>
+                <FileUploadArea
+                  type="model"
+                  url={modelUrl}
+                  setUrl={setModelUrl}
+                  label="模特图片（必填）"
+                  fileRef={modelFileRef}
+                  onFileSelect={handleFileSelect}
+                  onDrop={handleDrop}
+                  uploadingFiles={uploadingFiles}
+                  uploadProgress={uploadProgress}
+                  isValidUrl={isValidUrl}
                 />
-
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  {modelUrl && isValidUrl(modelUrl) ? (
-                    <div style={{
-                      flex: 1,
-                      border: '2px solid var(--color-border)',
-                      borderRadius: 'var(--radius-lg)',
-                      overflow: 'hidden',
-                      background: 'transparent',
-                      marginBottom: 'var(--spacing-md)'
-                    }}>
-                      <img
-                        src={modelUrl}
-                        alt="Model preview"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          objectPosition: 'top',
-                          display: 'block'
-                        }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div style={{
-                      flex: 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '2px solid var(--color-border)',
-                      borderRadius: 'var(--radius-lg)',
-                      background: 'transparent',
-                      marginBottom: 'var(--spacing-md)'
-                    }}>
-                      <div style={{ textAlign: 'center', color: 'var(--color-text-tertiary)' }}>
-                        <div style={{ fontSize: '3rem', marginBottom: 'var(--spacing-sm)', opacity: 0.6 }}>
-                          👤
-                        </div>
-                        <p style={{ fontSize: '1rem', margin: 0 }}>
-                          输入模特图片URL
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={handleGenerate}
-                  disabled={isLoading || !modelUrl || (!topGarmentUrl && !bottomGarmentUrl)}
-                  style={{
-                    background: isLoading || !modelUrl || (!topGarmentUrl && !bottomGarmentUrl) 
-                      ? 'var(--color-border)' 
-                      : 'var(--color-primary)',
-                    color: isLoading || !modelUrl || (!topGarmentUrl && !bottomGarmentUrl)
-                      ? 'var(--color-text-secondary)'
-                      : 'var(--color-text-white)',
-                    border: '2px solid var(--color-primary)',
-                    borderRadius: 'var(--radius-lg)',
-                    padding: 'var(--spacing-lg) var(--spacing-xl)',
-                    fontSize: '1.1rem',
-                    fontWeight: 500,
-                    cursor: isLoading || !modelUrl || (!topGarmentUrl && !bottomGarmentUrl) 
-                      ? 'not-allowed' 
-                      : 'pointer',
-                    transition: 'all 0.3s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 'var(--spacing-sm)',
-                    boxShadow: 'var(--shadow-md)',
-                    fontFamily: '"Space Grotesk", sans-serif'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isLoading && modelUrl && (topGarmentUrl || bottomGarmentUrl)) {
-                      e.currentTarget.style.background = 'var(--color-secondary)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isLoading && modelUrl && (topGarmentUrl || bottomGarmentUrl)) {
-                      e.currentTarget.style.background = 'var(--color-primary)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                    }
-                  }}
-                >
-                  <span style={{ fontSize: '1.2rem' }}>✨</span>
-                  {isLoading ? loadingText : '开始生成'}
-                </button>
-
-
-                {error && (
-                  <div style={{
-                    marginTop: 'var(--spacing-md)',
-                    padding: 'var(--spacing-md)',
-                    background: '#fee',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid #fcc'
-                  }}>
-                    <p style={{ color: '#c33', fontSize: '0.9rem', margin: 0 }}>
-                      {error}
-                    </p>
-                  </div>
-                )}
               </div>
+
+              <button
+                onClick={handleGenerate}
+                disabled={isLoading || !modelUrl || (!topGarmentUrl && !bottomGarmentUrl)}
+                style={{
+                  background: isLoading || !modelUrl || (!topGarmentUrl && !bottomGarmentUrl) 
+                    ? 'var(--color-border)' 
+                    : 'var(--color-primary)',
+                  color: isLoading || !modelUrl || (!topGarmentUrl && !bottomGarmentUrl)
+                    ? 'var(--color-text-secondary)'
+                    : 'var(--color-text-white)',
+                  border: '2px solid var(--color-primary)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: 'var(--spacing-lg) var(--spacing-xl)',
+                  fontSize: '1.1rem',
+                  fontWeight: 500,
+                  cursor: isLoading || !modelUrl || (!topGarmentUrl && !bottomGarmentUrl) 
+                    ? 'not-allowed' 
+                    : 'pointer',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 'var(--spacing-sm)',
+                  boxShadow: 'var(--shadow-md)',
+                  fontFamily: '"Space Grotesk", sans-serif'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading && modelUrl && (topGarmentUrl || bottomGarmentUrl)) {
+                    e.currentTarget.style.background = 'var(--color-secondary)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isLoading && modelUrl && (topGarmentUrl || bottomGarmentUrl)) {
+                    e.currentTarget.style.background = 'var(--color-primary)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                  }
+                }}
+              >
+                <span style={{ fontSize: '1.2rem' }}>✨</span>
+                {isLoading ? loadingText : '开始生成'}
+              </button>
+
+              {error && (
+                <div style={{
+                  marginTop: 'var(--spacing-md)',
+                  padding: 'var(--spacing-md)',
+                  background: '#fee',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid #fcc'
+                }}>
+                  <p style={{ color: '#c33', fontSize: '0.9rem', margin: 0 }}>
+                    {error}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Right Section - Results */}
@@ -698,13 +801,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
