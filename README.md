@@ -1,7 +1,17 @@
+# Fashion Commerce — Multimodal Virtual Try-On
 
-y# FASHN AI Virtual Try-On App
+A multimodal system that composes garment and model images step by step. Instead of a single pass, it treats try-on as a multi-step workflow: understand the inputs, compose them in sequence, and verify the result before presenting it.
 
-A Next.js + TypeScript application that provides virtual try-on functionality using the FASHN AI Try-On v1.6 API.
+It is one surface of the Fashion Commerce agent systems — the visual counterpart to text-driven styling. The same principle applies in both directions: an output should be composed deliberately, checked for consistency, and presented with enough context for the user to trust it.
+
+What this system explores:
+
+- How image inputs from different sources — garment, model, and context — are combined into a single coherent visual result.
+- How sequential composition handles dependencies: each step builds on the previous one, and errors need to be caught early rather than amplified.
+- How a visual workflow can be made robust to imperfect inputs, missing information, and ambiguous requests.
+
+
+Why this is hard: visual results are judged instantly, and there is nowhere to hide an inconsistency. This work focuses on making a multimodal pipeline behave like a reliable workflow, not just a striking demo.
 
 ## Features
 
